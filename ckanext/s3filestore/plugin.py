@@ -85,22 +85,21 @@ class S3FileStorePlugin(plugins.SingletonPlugin):
     #IResourceController
 
     def before_delete(self, context, resource, resources):
-        S3_conn = boto.connect_s3(p_key, s_key)
-        bucket = S3_conn.get_bucket(bucket_name)
+        bucket = ckanext.s3filestore.uploader.BaseS3Uploader().get_s3_bucket(bucket_name)
         for key in bucket.list():
             if resource['id'] in key.name:
                 log.debug('Delete %s', key.name)
                 bucket.delete_key(key.name)
 
     def after_update(self, context, resource):
-        S3_conn = boto.connect_s3(p_key, s_key)
-        bucket = S3_conn.get_bucket(bucket_name)
+        bucket = ckanext.s3filestore.uploader.BaseS3Uploader().get_s3_bucket(bucket_name)
+        file_path = resource['url'].rfind('/')
+        if file_path:
+            file_name = resource['url'][file_path+1:]
+        else:
+            file_name = resource['url']
         for key in bucket.list():
             if resource['id'] in key.name:
-                if resource['url'].rfind('/'):
-                    file_name = resource['url'][resource['url'].rfind('/')+1:]
-                else:
-                    file_name = resource['url']
                 if file_name not in key.name:
                     log.debug('Delete old %s after Update %s', key.name, file_name)
                     bucket.delete_key(key.name)
