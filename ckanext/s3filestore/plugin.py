@@ -4,7 +4,6 @@ import ckan.plugins.toolkit as toolkit
 
 import ckanext.s3filestore.uploader
 
-import boto
 import logging
 import pylons
 config = pylons.config
