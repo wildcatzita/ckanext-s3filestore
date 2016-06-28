@@ -10,9 +10,6 @@ import pylons
 config = pylons.config
 log = logging.getLogger(__name__)
 
-p_key = config.get('ckanext.s3filestore.aws_access_key_id')
-s_key = config.get('ckanext.s3filestore.aws_secret_access_key')
-bucket_name = config.get('ckanext.s3filestore.aws_bucket_name')
 
 class S3FileStorePlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IConfigurer)
@@ -85,21 +82,20 @@ class S3FileStorePlugin(plugins.SingletonPlugin):
     #IResourceController
 
     def before_delete(self, context, resource, resources):
-        bucket = ckanext.s3filestore.uploader.BaseS3Uploader().get_s3_bucket(bucket_name)
+        bucket = ckanext.s3filestore.uploader.BaseS3Uploader().bucket
         for key in bucket.list():
             if resource['id'] in key.name:
                 log.debug('Delete %s', key.name)
-                bucket.delete_key(key.name)
+                ckanext.s3filestore.uploader.BaseS3Uploader().clear_key(key.name)
 
     def after_update(self, context, resource):
-        bucket = ckanext.s3filestore.uploader.BaseS3Uploader().get_s3_bucket(bucket_name)
+        bucket = ckanext.s3filestore.uploader.BaseS3Uploader().bucket
         file_path = resource['url'].rfind('/')
         if file_path:
             file_name = resource['url'][file_path+1:]
         else:
             file_name = resource['url']
         for key in bucket.list():
-            if resource['id'] in key.name:
-                if file_name not in key.name:
+            if resource['id'] in key.name and file_name not in key.name:
                     log.debug('Delete old %s after Update %s', key.name, file_name)
-                    bucket.delete_key(key.name)
+                    ckanext.s3filestore.uploader.BaseS3Uploader().clear_key(key.name)
