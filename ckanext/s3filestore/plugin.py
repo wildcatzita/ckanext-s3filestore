@@ -9,7 +9,6 @@ import logging
 import pylons
 config = pylons.config
 log = logging.getLogger(__name__)
-bucket_s3_uploader = ckanext.s3filestore.uploader.BaseS3Uploader()
 
 
 class S3FileStorePlugin(plugins.SingletonPlugin):
@@ -83,14 +82,16 @@ class S3FileStorePlugin(plugins.SingletonPlugin):
     #IResourceController
 
     def before_delete(self, context, resource, resources):
-        bucket = ckanext.s3filestore.uploader.BaseS3Uploader().bucket
+        uploader = ckanext.s3filestore.uploader.BaseS3Uploader()
+        bucket = uploader.bucket
         for key in bucket.list():
             if resource['id'] in key.name:
                 log.debug('Delete %s', key.name)
-                bucket_s3_uploader.clear_key(key.name)
+                uploader.clear_key(key.name)
 
     def after_update(self, context, resource):
-        bucket = ckanext.s3filestore.uploader.BaseS3Uploader().bucket
+        uploader = ckanext.s3filestore.uploader.BaseS3Uploader()
+        bucket = uploader.bucket
         file_path = resource['url'].rfind('/')
         if file_path:
             file_name = resource['url'][file_path+1:]
@@ -99,4 +100,4 @@ class S3FileStorePlugin(plugins.SingletonPlugin):
         for key in bucket.list():
             if resource['id'] in key.name and file_name not in key.name:
                 log.debug('Delete old %s after Update %s', key.name, file_name)
-                bucket_s3_uploader.clear_key(key.name)
+                uploader.clear_key(key.name)
