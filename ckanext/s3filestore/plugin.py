@@ -3,11 +3,14 @@ import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
 
 import ckanext.s3filestore.uploader
-
+import ckan.logic as logic
+import ckan.model as model
+from ckan.common import c
 import logging
 import pylons
 config = pylons.config
 log = logging.getLogger(__name__)
+get_action = logic.get_action
 
 
 class S3FileStorePlugin(plugins.SingletonPlugin):
@@ -81,12 +84,15 @@ class S3FileStorePlugin(plugins.SingletonPlugin):
     #IResourceController
 
     def before_delete(self, context, resource, resources):
-        uploader = ckanext.s3filestore.uploader.BaseS3Uploader()
-        bucket = uploader.bucket
-        for key in bucket.list():
-            if resource['id'] in key.name:
-                log.debug('Delete %s', key.name)
-                uploader.clear_key(key.name)
+        context = {'model': model, 'user': c.user}
+        resource_dict = get_action('resource_show')(context, {'id': resource['id']})
+        if resource_dict['url_type'] == 'upload':
+            uploader = ckanext.s3filestore.uploader.BaseS3Uploader()
+            bucket = uploader.bucket
+            for key in bucket.list():
+                if resource['id'] in key.name:
+                    log.debug('Delete %s', key.name)
+                    uploader.clear_key(key.name)
 
     def after_update(self, context, resource):
         uploader = ckanext.s3filestore.uploader.BaseS3Uploader()
@@ -96,7 +102,13 @@ class S3FileStorePlugin(plugins.SingletonPlugin):
             file_name = resource['url'][file_path+1:]
         else:
             file_name = resource['url']
-        for key in bucket.list():
-            if resource['id'] in key.name and file_name not in key.name:
-                log.debug('Delete old %s after Update %s', key.name, file_name)
-                uploader.clear_key(key.name)
+        if resource['url_type'] == 'upload':
+            for key in bucket.list():
+                if resource['id'] in key.name and file_name not in key.name:
+                    log.debug('Delete old %s after Update %s', key.name, file_name)
+                    uploader.clear_key(key.name)
+        else:
+            for key in bucket.list():
+                if resource['id'] in key.name:
+                    log.debug('Delete old %s after Update link for %s', key.name, file_name)
+                    uploader.clear_key(key.name)
