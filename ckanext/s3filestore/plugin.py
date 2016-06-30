@@ -7,8 +7,6 @@ import ckan.logic as logic
 import ckan.model as model
 from ckan.common import c
 import logging
-import pylons
-config = pylons.config
 log = logging.getLogger(__name__)
 get_action = logic.get_action
 
@@ -93,6 +91,7 @@ class S3FileStorePlugin(plugins.SingletonPlugin):
                 if resource['id'] in key.name:
                     log.debug('Delete %s', key.name)
                     uploader.clear_key(key.name)
+                    break
 
     def after_update(self, context, resource):
         uploader = ckanext.s3filestore.uploader.BaseS3Uploader()
@@ -102,13 +101,14 @@ class S3FileStorePlugin(plugins.SingletonPlugin):
             file_name = resource['url'][file_path+1:]
         else:
             file_name = resource['url']
-        if resource['url_type'] == 'upload':
-            for key in bucket.list():
+        for key in bucket.list():
+            if resource['url_type'] == 'upload':
                 if resource['id'] in key.name and file_name not in key.name:
-                    log.debug('Delete old %s after Update %s', key.name, file_name)
+                    log.debug('Delete old %s after Update to upload file', key.name)
                     uploader.clear_key(key.name)
-        else:
-            for key in bucket.list():
+                    break
+            else:
                 if resource['id'] in key.name:
-                    log.debug('Delete old %s after Update link for %s', key.name, file_name)
+                    log.debug('Delete old %s after Update to link', key.name)
                     uploader.clear_key(key.name)
+                    break
